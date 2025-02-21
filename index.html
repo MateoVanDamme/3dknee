@@ -37,6 +37,8 @@
 		import { NRRDLoader } from 'three/addons/loaders/NRRDLoader.js';
 		import { VolumeRenderShader1 } from 'three/addons/shaders/VolumeShader.js';
 
+		const getFilesLocally = false; // Set to true for local, false for online
+
 		let renderer,
 			scene,
 			camera,
@@ -73,16 +75,23 @@
 			controls.enablePan = false;
 
 			// The gui for interaction
+			
 			volconfig = { 
 				clim1: 0, 
 				clim2: 1, 
 				renderstyle: 'mip', 
 				isothreshold: 0.2, 
 				colormap: 'viridis',
-				volumeFile: './data/ct_scan_scaled.nrrd' // Default volume file
+				volumeFile: 'ct_scan_scaled.nrrd' // Default volume file name
 			};
+
 			const gui = new GUI();
-			gui.add(volconfig, 'volumeFile', ['./data/ct_scan_scaled.nrrd', './data/stent.nrrd']).onChange(loadSelectedVolume);
+			gui.add(volconfig, 'volumeFile', [
+				'ct_scan_scaled.nrrd', 
+				'stent.nrrd'
+			]).onChange(loadSelectedVolume);
+
+
 			gui.add( volconfig, 'clim1', 0, 1, 0.01 ).onChange( updateUniforms );
 			gui.add( volconfig, 'clim2', 0, 1, 0.01 ).onChange( updateUniforms );
 			gui.add( volconfig, 'colormap', { gray: 'gray', viridis: 'viridis' } ).onChange( updateUniforms );
@@ -97,7 +106,8 @@
 		}
 
 		async function loadSelectedVolume(filename) {
-			const volume = await loadVolume(filename);
+			const baseUrl = getFilesLocally ? './data/' : 'https://storage.googleapis.com/my_medical_data/';
+			const volume = await loadVolume(baseUrl + filename);
 			updateVolume(volume);
 		}
 
