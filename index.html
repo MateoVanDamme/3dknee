@@ -80,14 +80,15 @@
 				clim1: 0, 
 				clim2: 1, 
 				renderstyle: 'mip', 
-				isothreshold: 0.2, 
+				isothreshold: 0.03, 
 				colormap: 'viridis',
-				volumeFile: 'ct_scan_scaled.nrrd' // Default volume file name
+				volumeFile: 'ct_scan_knee_postop.nrrd' // Default volume file name
 			};
 
 			const gui = new GUI();
 			gui.add(volconfig, 'volumeFile', [
-				'ct_scan_scaled.nrrd', 
+				'ct_scan_knee_postop.nrrd',
+				'ct_scan_knee_preop.nrrd', 
 				'stent.nrrd'
 			]).onChange(loadSelectedVolume);
 
