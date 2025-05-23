@@ -35,7 +35,8 @@
 		import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 		import { NRRDLoader } from 'three/addons/loaders/NRRDLoader.js';
-		import { VolumeRenderShader1 } from 'three/addons/shaders/VolumeShader.js';
+		// import { VolumeRenderShader1 } from 'three/addons/shaders/VolumeShader.js'; // normal implementation
+		import { VolumeRenderShader2 } from './web/js/shaders/VolumeShader2.js'; // my own implementation 
 
 		const getFilesLocally = false; // Set to true for local, false for online
 
@@ -97,7 +98,7 @@
 			gui.add( volconfig, 'clim1', 0, 1, 0.01 ).onChange( updateUniforms );
 			gui.add( volconfig, 'clim2', 0, 1, 0.01 ).onChange( updateUniforms );
 			gui.add( volconfig, 'colormap', { gray: 'gray', viridis: 'viridis' } ).onChange( updateUniforms );
-			gui.add( volconfig, 'renderstyle', { mip: 'mip', iso: 'iso' } ).onChange( updateUniforms );
+			gui.add( volconfig, 'renderstyle', { mip: 'mip', iso: 'iso', ray: 'ray' } ).onChange( updateUniforms );
 			gui.add( volconfig, 'isothreshold', 0, 1, 0.01 ).onChange( updateUniforms );
 
 			// Load the default volume
@@ -141,7 +142,7 @@
 			};
 
 			// Material
-			const shader = VolumeRenderShader1;
+			const shader = VolumeRenderShader2;
 			const uniforms = THREE.UniformsUtils.clone( shader.uniforms );
 
 			uniforms[ 'u_data' ].value = texture;
@@ -173,7 +174,10 @@
 		function updateUniforms() {
 			if (material) {
 				material.uniforms[ 'u_clim' ].value.set( volconfig.clim1, volconfig.clim2 );
-				material.uniforms[ 'u_renderstyle' ].value = volconfig.renderstyle == 'mip' ? 0 : 1; // 0: MIP, 1: ISO
+				material.uniforms[ 'u_renderstyle' ].value =
+  					volconfig.renderstyle === 'mip' ? 0 :
+  					volconfig.renderstyle === 'iso' ? 1 :
+					2;
 				material.uniforms[ 'u_renderthreshold' ].value = volconfig.isothreshold; // For ISO renderstyle
 				material.uniforms[ 'u_cmdata' ].value = cmtextures[ volconfig.colormap ];
 	
