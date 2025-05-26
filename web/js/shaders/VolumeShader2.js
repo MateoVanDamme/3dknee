@@ -241,7 +241,7 @@ const VolumeRenderShader2 = {
 
 						float val = sample1(loc);
 						float weight = 1.0 - float(iter) / float(nsteps); // Linear weighting
-						total_val += val * weight * 0.05;
+						total_val += val *  0.05 * weight;
 
 						loc += step;
 					}
