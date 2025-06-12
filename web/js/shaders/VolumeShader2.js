@@ -89,7 +89,8 @@ const VolumeRenderShader2 = {
 
 				void cast_mip(vec3 start_loc, vec3 step, int nsteps, vec3 view_ray);
 				void cast_iso(vec3 start_loc, vec3 step, int nsteps, vec3 view_ray);
-				void cast_integrated(vec3 start_loc, vec3 step, int nsteps, vec3 view_ray);
+				void cast_emission_absorption(vec3 start_loc, vec3 step, int nsteps, vec3 view_ray);
+				void cast_integration_simple(vec3 start_loc, vec3 step, int nsteps, vec3 view_ray);
 
 				float sample1(vec3 texcoords);
 				vec4 apply_colormap(float val);
@@ -137,7 +138,9 @@ const VolumeRenderShader2 = {
 						else if (u_renderstyle == 1)
 								cast_iso(start_loc, step, nsteps, view_ray);
 						else if (u_renderstyle == 2)
-								cast_integrated(start_loc, step, nsteps, view_ray);
+								cast_integration_simple(start_loc, step, nsteps, view_ray);
+						else if (u_renderstyle == 3)
+								cast_emission_absorption(start_loc, step, nsteps, view_ray);
 
 						if (gl_FragColor.a < 0.05)
 								discard;
@@ -230,9 +233,11 @@ const VolumeRenderShader2 = {
 						}
 				}
 
-				void cast_integrated(vec3 start_loc, vec3 step, int nsteps, vec3 view_ray) {
-
+				void cast_emission_absorption(vec3 start_loc, vec3 step, int nsteps, vec3 view_ray) {
 					float total_val = 0.0;
+					float transmittance = 1.0;
+					float absorption = 0.2; // tweakable
+					float step_length = length(step);
 					vec3 loc = start_loc;
 
 					for (int iter = 0; iter < MAX_STEPS; iter++) {
@@ -240,13 +245,41 @@ const VolumeRenderShader2 = {
 							break;
 
 						float val = sample1(loc);
-						float weight = 1.0 - float(iter) / float(nsteps); // Linear weighting
-						total_val += val *  0.05 * weight;
+						float atten = exp(-absorption * val * step_length);  // Exponential attenuation
+						float weight = val * transmittance * (1.0 - atten);         // Emitted contribution
+						total_val += weight;
+						transmittance *= atten;
+
+						if (transmittance < 0.1)
+							break;
 
 						loc += step;
 					}
 
-					gl_FragColor = apply_colormap(total_val);
+					float scale = 100.0; // Optional: you can tune this
+					gl_FragColor = apply_colormap(total_val * scale);
+				}
+
+
+				void cast_integration_simple(vec3 start_loc, vec3 step, int nsteps, vec3 view_ray) {
+					float total_val = 0.0;
+					float scale = 0.04;
+					float weight = 1.0;
+					vec3 loc = start_loc;
+					
+					for (int iter = 0; iter < MAX_STEPS; iter++) {
+						if (iter >= nsteps)
+							break;
+
+						float val = sample1(loc);
+						if(weight - val * 0.02 < 0.0)
+							break;
+						weight = weight - val * 0.02;
+						total_val += val * weight;
+						loc += step;
+					}
+
+					gl_FragColor = apply_colormap(total_val * scale);
 				}
 
 				vec4 add_lighting(float val, vec3 loc, vec3 step, vec3 view_ray)

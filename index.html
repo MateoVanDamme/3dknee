@@ -40,6 +40,14 @@
 
 		const getFilesLocally = false; // Set to true for local, false for online
 
+		const RENDERSTYLE_MAP = {
+			mip: 0,
+			iso: 1,
+			raySimple: 2,
+			rayPhysical: 3
+		};
+
+
 		let renderer,
 			scene,
 			camera,
@@ -98,7 +106,12 @@
 			gui.add( volconfig, 'clim1', 0, 1, 0.01 ).onChange( updateUniforms );
 			gui.add( volconfig, 'clim2', 0, 1, 0.01 ).onChange( updateUniforms );
 			gui.add( volconfig, 'colormap', { gray: 'gray', viridis: 'viridis' } ).onChange( updateUniforms );
-			gui.add( volconfig, 'renderstyle', { mip: 'mip', iso: 'iso', ray: 'ray' } ).onChange( updateUniforms );
+			gui.add( volconfig, 'renderstyle', { 
+				mip: 'mip', 
+				iso: 'iso', 
+				raySimple: 'raySimple',
+				rayPhysical: 'rayPhysical'
+			 } ).onChange( updateUniforms );
 			gui.add( volconfig, 'isothreshold', 0, 1, 0.01 ).onChange( updateUniforms );
 
 			// Load the default volume
@@ -148,7 +161,7 @@
 			uniforms[ 'u_data' ].value = texture;
 			uniforms[ 'u_size' ].value.set( volume.xLength, volume.yLength, volume.zLength );
 			uniforms[ 'u_clim' ].value.set( volconfig.clim1, volconfig.clim2 );
-			uniforms[ 'u_renderstyle' ].value = volconfig.renderstyle == 'mip' ? 0 : 1; // 0: MIP, 1: ISO
+			uniforms['u_renderstyle'].value = RENDERSTYLE_MAP[volconfig.renderstyle] ?? 0;
 			uniforms[ 'u_renderthreshold' ].value = volconfig.isothreshold; // For ISO renderstyle
 			uniforms[ 'u_cmdata' ].value = cmtextures[ volconfig.colormap ];
 
@@ -174,10 +187,7 @@
 		function updateUniforms() {
 			if (material) {
 				material.uniforms[ 'u_clim' ].value.set( volconfig.clim1, volconfig.clim2 );
-				material.uniforms[ 'u_renderstyle' ].value =
-  					volconfig.renderstyle === 'mip' ? 0 :
-  					volconfig.renderstyle === 'iso' ? 1 :
-					2;
+				material.uniforms['u_renderstyle'].value = RENDERSTYLE_MAP[volconfig.renderstyle] ?? 0;
 				material.uniforms[ 'u_renderthreshold' ].value = volconfig.isothreshold; // For ISO renderstyle
 				material.uniforms[ 'u_cmdata' ].value = cmtextures[ volconfig.colormap ];
 	
