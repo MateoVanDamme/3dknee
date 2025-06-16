@@ -43,8 +43,7 @@
 		const RENDERSTYLE_MAP = {
 			mip: 0,
 			iso: 1,
-			raySimple: 2,
-			rayPhysical: 3
+			ray: 3
 		};
 
 		const VOLUMES = [
@@ -113,8 +112,7 @@
 			gui.add( volconfig, 'renderstyle', { 
 				mip: 'mip', 
 				iso: 'iso', 
-				raySimple: 'raySimple',
-				rayPhysical: 'rayPhysical'
+				ray: 'ray'
 			 } ).onChange( updateUniforms );
 			gui.add( volconfig, 'isothreshold', 0, 1, 0.01 ).onChange( updateUniforms );
 
