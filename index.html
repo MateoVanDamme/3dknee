@@ -47,6 +47,13 @@
 			rayPhysical: 3
 		};
 
+		const VOLUMES = [
+				'ct_scan_knee_postop_small.nrrd',
+				'ct_scan_knee_preop_small.nrrd', 
+				'ct_scan_knee_preop_cleaned.nrrd',
+				// 'ct_scan_knee_postop_sobel.nrrd',
+				'stent.nrrd'
+		];
 
 		let renderer,
 			scene,
@@ -64,7 +71,9 @@
 			scene = new THREE.Scene();
 
 			// Create renderer
-			renderer = new THREE.WebGLRenderer();
+			renderer = new THREE.WebGLRenderer({
+				  powerPreference: 'high-performance',   // ask for the discrete GPU
+			});
 			renderer.setPixelRatio( window.devicePixelRatio );
 			renderer.setSize( window.innerWidth, window.innerHeight );
 			document.body.appendChild( renderer.domElement );
@@ -89,18 +98,13 @@
 				clim1: 0, 
 				clim2: 1, 
 				renderstyle: 'mip', 
-				isothreshold: 0.03, 
+				isothreshold: 0.01, 
 				colormap: 'viridis',
-				volumeFile: 'ct_scan_knee_postop.nrrd' // Default volume file name
+				volumeFile: VOLUMES[0] // Default volume file name
 			};
 
 			const gui = new GUI();
-			gui.add(volconfig, 'volumeFile', [
-				'ct_scan_knee_postop.nrrd',
-				'ct_scan_knee_preop.nrrd', 
-				'ct_scan_knee_preop_cleaned.nrrd',
-				'stent.nrrd'
-			]).onChange(loadSelectedVolume);
+			gui.add(volconfig, 'volumeFile', VOLUMES).onChange(loadSelectedVolume);
 
 
 			gui.add( volconfig, 'clim1', 0, 1, 0.01 ).onChange( updateUniforms );
