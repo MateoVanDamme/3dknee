@@ -1,26 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
 	<title>three.js webgl - volume rendering example</title>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 
 	<style>
-		html, body {
+		html,
+		body {
 			margin: 0;
 			padding: 0;
-			overflow: hidden; /* Prevents scrollbars */
+			overflow: hidden;
+			/* Prevents scrollbars */
 			width: 100%;
 			height: 100%;
 		}
 	</style>
-	
+
 </head>
 
 <body>
 	<div id="inset"></div>
 
-    <script type="importmap">
+	<script type="importmap">
         {
           "imports": {
             "three": "https://cdn.jsdelivr.net/npm/three@0.173.0/build/three.module.js",
@@ -46,13 +49,12 @@
 			ray: 3
 		};
 
-		const VOLUMES = [
-				'ct_scan_knee_postop_small.nrrd',
-				'ct_scan_knee_preop_small.nrrd', 
-				'ct_scan_knee_preop_cleaned.nrrd',
-				// 'ct_scan_knee_postop_sobel.nrrd',
-				'stent.nrrd'
-		];
+		const VOLUME_MAP = {
+			"Quad muscles MRI": "mri_scan_99_clean.nrrd",
+			"Post-op knee CT": "ct_scan_knee_postop_small.nrrd",
+			"Pre-op knee CT": "ct_scan_knee_preop_small.nrrd",
+			"Pre-op cleaned knee CT": "ct_scan_knee_preop_cleaned.nrrd",
+		};
 
 		let renderer,
 			scene,
@@ -71,56 +73,57 @@
 
 			// Create renderer
 			renderer = new THREE.WebGLRenderer({
-				  powerPreference: 'high-performance',   // ask for the discrete GPU
+				powerPreference: 'high-performance',   // ask for the discrete GPU
 			});
-			renderer.setPixelRatio( window.devicePixelRatio );
-			renderer.setSize( window.innerWidth, window.innerHeight );
-			document.body.appendChild( renderer.domElement );
+			renderer.setPixelRatio(window.devicePixelRatio);
+			renderer.setSize(window.innerWidth, window.innerHeight);
+			document.body.appendChild(renderer.domElement);
 
 			// Create camera (The volume renderer does not work very well with perspective yet)
 			const h = 512; // frustum height
 			const aspect = window.innerWidth / window.innerHeight;
-			camera = new THREE.OrthographicCamera( - h * aspect / 2, h * aspect / 2, h / 2, - h / 2, 1, 2000 );
-			camera.position.set(0, 0, 0 );
-			camera.up.set( 1, 0, 0 );
+			camera = new THREE.OrthographicCamera(- h * aspect / 2, h * aspect / 2, h / 2, - h / 2, 1, 2000);
+			camera.position.set(0, 0, 0);
+			camera.up.set(1, 0, 0);
 
 			// Create controls
-			controls = new OrbitControls( camera, renderer.domElement );
-			controls.addEventListener( 'change', render );
+			controls = new OrbitControls(camera, renderer.domElement);
+			controls.addEventListener('change', render);
 			controls.minZoom = 0.5;
 			controls.maxZoom = 4;
 			controls.enablePan = false;
 
-			// The gui for interaction
-			
-			volconfig = { 
-				clim1: 0, 
-				clim2: 1, 
-				renderstyle: 'mip', 
-				isothreshold: 0.01, 
+			// The gui for interaction with default values
+			volconfig = {
+				clim1: 0,
+				clim2: 1,
+				renderstyle: 'ray',
+				isothreshold: 0.01,
 				colormap: 'viridis',
-				volumeFile: VOLUMES[0] // Default volume file name
+				volumeFile: "Post-op knee CT"
 			};
 
+			// Configure GUI ranges
 			const gui = new GUI();
-			gui.add(volconfig, 'volumeFile', VOLUMES).onChange(loadSelectedVolume);
-
-
-			gui.add( volconfig, 'clim1', 0, 1, 0.01 ).onChange( updateUniforms );
-			gui.add( volconfig, 'clim2', 0, 1, 0.01 ).onChange( updateUniforms );
-			gui.add( volconfig, 'colormap', { gray: 'gray', viridis: 'viridis' } ).onChange( updateUniforms );
-			gui.add( volconfig, 'renderstyle', { 
-				mip: 'mip', 
-				iso: 'iso', 
+			gui.add(volconfig, 'volumeFile', Object.keys(VOLUME_MAP)).onChange(displayName => {
+				const filename = VOLUME_MAP[displayName];
+				loadSelectedVolume(filename);
+			});
+			gui.add(volconfig, 'clim1', 0, 1, 0.01).onChange(updateUniforms);
+			gui.add(volconfig, 'clim2', 0, 1, 0.01).onChange(updateUniforms);
+			gui.add(volconfig, 'colormap', { gray: 'gray', viridis: 'viridis' }).onChange(updateUniforms);
+			gui.add(volconfig, 'renderstyle', {
+				mip: 'mip',
+				iso: 'iso',
 				ray: 'ray'
-			 } ).onChange( updateUniforms );
-			gui.add( volconfig, 'isothreshold', 0, 1, 0.01 ).onChange( updateUniforms );
+			}).onChange(updateUniforms);
+			gui.add(volconfig, 'isothreshold', 0, 1, 0.01).onChange(updateUniforms);
 
 			// Load the default volume
-			await loadSelectedVolume(volconfig.volumeFile);
+			const defaultFileName = VOLUME_MAP[volconfig.volumeFile]
+			await loadSelectedVolume(defaultFileName);
 
-			window.addEventListener( 'resize', onWindowResize );
-
+			window.addEventListener('resize', onWindowResize);
 		}
 
 		async function loadSelectedVolume(filename) {
@@ -143,7 +146,7 @@
 			}
 
 			// Create texture and material
-			const texture = new THREE.Data3DTexture( volume.data, volume.xLength, volume.yLength, volume.zLength );
+			const texture = new THREE.Data3DTexture(volume.data, volume.xLength, volume.yLength, volume.zLength);
 			texture.format = THREE.RedFormat;
 			texture.type = THREE.FloatType;
 			texture.minFilter = texture.magFilter = THREE.LinearFilter;
@@ -152,35 +155,39 @@
 
 			// Colormap textures
 			cmtextures = {
-				viridis: new THREE.TextureLoader().load( 'textures/cm_viridis.png', render ),
-				gray: new THREE.TextureLoader().load( 'textures/cm_gray.png', render )
+				viridis: new THREE.TextureLoader().load('textures/cm_viridis.png', render),
+				gray: new THREE.TextureLoader().load('textures/cm_gray.png', render)
 			};
 
 			// Material
 			const shader = VolumeRenderShader2;
-			const uniforms = THREE.UniformsUtils.clone( shader.uniforms );
+			const uniforms = THREE.UniformsUtils.clone(shader.uniforms);
 
-			uniforms[ 'u_data' ].value = texture;
-			uniforms[ 'u_size' ].value.set( volume.xLength, volume.yLength, volume.zLength );
-			uniforms[ 'u_clim' ].value.set( volconfig.clim1, volconfig.clim2 );
+			uniforms['u_data'].value = texture;
+			uniforms['u_size'].value.set(volume.xLength, volume.yLength, volume.zLength);
+			uniforms['u_clim'].value.set(volconfig.clim1, volconfig.clim2);
 			uniforms['u_renderstyle'].value = RENDERSTYLE_MAP[volconfig.renderstyle] ?? 0;
-			uniforms[ 'u_renderthreshold' ].value = volconfig.isothreshold; // For ISO renderstyle
-			uniforms[ 'u_cmdata' ].value = cmtextures[ volconfig.colormap ];
+			uniforms['u_renderthreshold'].value = volconfig.isothreshold; // For ISO renderstyle
+			uniforms['u_cmdata'].value = cmtextures[volconfig.colormap];
 
-			material = new THREE.ShaderMaterial( {
+			material = new THREE.ShaderMaterial({
 				uniforms: uniforms,
 				vertexShader: shader.vertexShader,
 				fragmentShader: shader.fragmentShader,
 				side: THREE.BackSide // The volume shader uses the backface as its "reference point"
-			} );
+			});
 
-			// THREE.Mesh
-			const geometry = new THREE.BoxGeometry( volume.xLength, volume.yLength, volume.zLength );
-			geometry.translate( volume.xLength / 2 - 0.5, volume.yLength / 2 - 0.5, volume.zLength / 2 - 0.5 );
-			const mesh = new THREE.Mesh( geometry, material );
-			scene.add( mesh );
+			// Compute volume center once
+			const center = new THREE.Vector3(volume.xLength / 2, volume.yLength / 2, volume.zLength / 2);
 
-			controls.target.set(volume.xLength / 2 - 0.5, volume.yLength / 2 - 0.5, volume.zLength / 2 - 0.5 );
+			// Geometry and mesh
+			const geometry = new THREE.BoxGeometry(volume.xLength, volume.yLength, volume.zLength);
+			geometry.translate(center.x, center.y, center.z);
+			const mesh = new THREE.Mesh(geometry, material);
+			scene.add(mesh);
+
+			// Set orbit target
+			controls.target.copy(center);
 			controls.update();
 
 			render();
@@ -188,17 +195,17 @@
 
 		function updateUniforms() {
 			if (material) {
-				material.uniforms[ 'u_clim' ].value.set( volconfig.clim1, volconfig.clim2 );
+				material.uniforms['u_clim'].value.set(volconfig.clim1, volconfig.clim2);
 				material.uniforms['u_renderstyle'].value = RENDERSTYLE_MAP[volconfig.renderstyle] ?? 0;
-				material.uniforms[ 'u_renderthreshold' ].value = volconfig.isothreshold; // For ISO renderstyle
-				material.uniforms[ 'u_cmdata' ].value = cmtextures[ volconfig.colormap ];
-	
+				material.uniforms['u_renderthreshold'].value = volconfig.isothreshold; // For ISO renderstyle
+				material.uniforms['u_cmdata'].value = cmtextures[volconfig.colormap];
+
 				render();
 			}
 		}
 
 		function onWindowResize() {
-			renderer.setSize( window.innerWidth, window.innerHeight );
+			renderer.setSize(window.innerWidth, window.innerHeight);
 
 			const aspect = window.innerWidth / window.innerHeight;
 
@@ -213,7 +220,7 @@
 		}
 
 		function render() {
-			renderer.render( scene, camera );
+			renderer.render(scene, camera);
 		}
 
 	</script>

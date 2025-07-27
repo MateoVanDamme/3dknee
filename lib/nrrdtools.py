@@ -1,25 +1,5 @@
 import numpy as np
 import nrrd
-from scipy.ndimage import gaussian_filter
-
-def filter_and_subsample(ct_data, subsampling_factor=2, sigma=1):
-    """
-    Applies a Gaussian filter to the CT data and then subsamples it.
-
-    Parameters:
-    - ct_data (np.ndarray): The original CT data (3D numpy array).
-    - subsampling_factor (int): The factor by which to downsample the data (default: 2).
-    - sigma (float): Standard deviation for Gaussian kernel (default: 1).
-
-    Returns:
-    - np.ndarray: The filtered and downsampled data.
-    """
-    if subsampling_factor == 1:
-        return ct_data
-
-    filtered_data = gaussian_filter(ct_data, sigma=sigma)
-    ct_data_scaled = filtered_data[::subsampling_factor, ::subsampling_factor, ::subsampling_factor]
-    return ct_data_scaled
 
 def save_ct_nrrd(filename, ct_data):
     """
@@ -44,3 +24,12 @@ def save_ct_nrrd(filename, ct_data):
 
     nrrd.write(filename, ct_data, header)
     print(f"Saved as {filename}")
+
+
+def print_nrrd_header(filename):
+    """Reads an NRRD file and prints its header information."""
+    data, header = nrrd.read(filename)
+    print(f"NRRD Header for {filename}:")
+    for key, value in header.items():
+        print(f"{key}: {value}")
+    print()  # Add a newline for readability
