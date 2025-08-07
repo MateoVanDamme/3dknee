@@ -34,15 +34,16 @@
 
 	<script type="module">
 		import * as THREE from 'three';
-
 		import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 		import { NRRDLoader } from 'three/addons/loaders/NRRDLoader.js';
 		// import { VolumeRenderShader1 } from 'three/addons/shaders/VolumeShader.js'; // normal implementation
+
+		// Custom imports
 		import { VolumeRenderShader2 } from './web/js/shaders/VolumeShader2.js'; // my own implementation 
 
-		const getFilesLocally = false; // Set to true for local, false for online
-
+		const GET_FILES_LOCALLY = false; // Set to true for local, false for online
+		const VOLUME_HEIGHT = 150;
 		const RENDERSTYLE_MAP = {
 			mip: 0,
 			iso: 1,
@@ -50,20 +51,13 @@
 		};
 
 		const VOLUME_MAP = {
-			"Quad muscles MRI": "mri_scan_99_clean.nrrd",
 			"Post-op knee CT": "ct_scan_knee_postop_small.nrrd",
 			"Pre-op knee CT": "ct_scan_knee_preop_small.nrrd",
 			"Pre-op cleaned knee CT": "ct_scan_knee_preop_cleaned.nrrd",
+			"Quad muscles MRI": "mri_scan_99_clean.nrrd",
 		};
 
-		let renderer,
-			scene,
-			camera,
-			controls,
-			material,
-			volconfig,
-			cmtextures,
-			currentVolume;
+		let renderer, scene, camera, controls, material, volconfig, cmtextures, currentVolume;
 
 		init();
 
@@ -111,7 +105,10 @@
 			});
 			gui.add(volconfig, 'clim1', 0, 1, 0.01).onChange(updateUniforms);
 			gui.add(volconfig, 'clim2', 0, 1, 0.01).onChange(updateUniforms);
-			gui.add(volconfig, 'colormap', { gray: 'gray', viridis: 'viridis' }).onChange(updateUniforms);
+			gui.add(volconfig, 'colormap', {
+				gray: 'gray',
+				viridis: 'viridis'
+			}).onChange(updateUniforms);
 			gui.add(volconfig, 'renderstyle', {
 				mip: 'mip',
 				iso: 'iso',
@@ -127,7 +124,7 @@
 		}
 
 		async function loadSelectedVolume(filename) {
-			const baseUrl = getFilesLocally ? './data/' : 'https://storage.googleapis.com/my_medical_data/';
+			const baseUrl = GET_FILES_LOCALLY ? './data/' : 'https://storage.googleapis.com/my_medical_data/';
 			const volume = await loadVolume(baseUrl + filename);
 			updateVolume(volume);
 		}
@@ -140,10 +137,14 @@
 		}
 
 		function updateVolume(volume) {
+			// Calculate parameters of scaled volume
+			const scale = VOLUME_HEIGHT / volume.zLength;
+			const scaled = new THREE.Vector3(volume.xLength, volume.yLength, volume.zLength).multiplyScalar(scale);
+			const center = scaled.clone().multiplyScalar(0.5);
+
 			// Clear previous material and mesh
-			if (material) {
+			if (material) 
 				scene.remove(scene.children[0]); // Assuming the mesh is the first child
-			}
 
 			// Create texture and material
 			const texture = new THREE.Data3DTexture(volume.data, volume.xLength, volume.yLength, volume.zLength);
@@ -164,7 +165,7 @@
 			const uniforms = THREE.UniformsUtils.clone(shader.uniforms);
 
 			uniforms['u_data'].value = texture;
-			uniforms['u_size'].value.set(volume.xLength, volume.yLength, volume.zLength);
+			uniforms['u_size'].value = scaled;
 			uniforms['u_clim'].value.set(volconfig.clim1, volconfig.clim2);
 			uniforms['u_renderstyle'].value = RENDERSTYLE_MAP[volconfig.renderstyle] ?? 0;
 			uniforms['u_renderthreshold'].value = volconfig.isothreshold; // For ISO renderstyle
@@ -177,12 +178,8 @@
 				side: THREE.BackSide // The volume shader uses the backface as its "reference point"
 			});
 
-			// Compute volume center once
-			const center = new THREE.Vector3(volume.xLength / 2, volume.yLength / 2, volume.zLength / 2);
-
-			// Geometry and mesh
-			const geometry = new THREE.BoxGeometry(volume.xLength, volume.yLength, volume.zLength);
-			geometry.translate(center.x, center.y, center.z);
+			// Create scaled geometry and translate to center
+			const geometry = new THREE.BoxGeometry(scaled.x, scaled.y, scaled.z).translate(center.x, center.y, center.z);
 			const mesh = new THREE.Mesh(geometry, material);
 			scene.add(mesh);
 
@@ -199,7 +196,6 @@
 				material.uniforms['u_renderstyle'].value = RENDERSTYLE_MAP[volconfig.renderstyle] ?? 0;
 				material.uniforms['u_renderthreshold'].value = volconfig.isothreshold; // For ISO renderstyle
 				material.uniforms['u_cmdata'].value = cmtextures[volconfig.colormap];
-
 				render();
 			}
 		}
@@ -226,4 +222,5 @@
 	</script>
 
 </body>
+
 </html>
