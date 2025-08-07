@@ -56,6 +56,7 @@
 			"Pre-op cleaned knee CT": "ct_scan_knee_preop_cleaned.nrrd",
 			"Quad muscles MRI": "mri_scan_99_clean.nrrd",
 		};
+		const DEFAULT_VOLUME = "Post-op knee CT";
 
 		let renderer, scene, camera, controls, material, volconfig, cmtextures, currentVolume;
 
@@ -94,7 +95,7 @@
 				renderstyle: 'ray',
 				isothreshold: 0.01,
 				colormap: 'viridis',
-				volumeFile: "Post-op knee CT"
+				volumeFile: DEFAULT_VOLUME
 			};
 
 			// Configure GUI ranges
